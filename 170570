@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#d90429">
+<title>Freeman Active Car Wash</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{--red:#d90429;--soft:#fdecef;--line:#f0d2d7;--text:#1b1b1b;--muted:#6b6b6b}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#fff;color:var(--text);padding-bottom:40px}
+header{background:var(--red);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.logo{width:46px;height:46px;border-radius:50%;background:#fff;display:grid;place-items:center;flex:none}
+.logo svg{width:34px;height:34px}
+header h1{margin:0;font-size:18px;line-height:1.1;letter-spacing:.5px}
+header small{display:block;margin-top:3px;font-size:11px;opacity:.95}
+nav{display:flex;background:#fff;border-bottom:2px solid var(--red);position:sticky;top:78px;z-index:9}
+nav button{flex:1;padding:12px 4px;border:0;background:#fff;font-weight:700;font-size:13px;color:var(--muted)}
+nav button.on{background:var(--red);color:#fff}
+main{max-width:640px;margin:0 auto;padding:14px}
+section{display:none}section.on{display:block}
+.card{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;background:#fff}
+h2{font-size:16px;margin:0 0 10px;color:var(--red)}
+label{display:block;font-weight:600;font-size:13px;margin:10px 0 4px}
+select,input[type=text],input[type=number],input[type=date]{width:100%;padding:11px;border:1.5px solid var(--line);border-radius:10px;font-size:15px;background:#fff}
+select:focus,input:focus{outline:none;border-color:var(--red)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:9px 14px;border-radius:999px;border:1.5px solid var(--red);background:#fff;color:var(--red);font-weight:600;font-size:14px}
+.chip.on{background:var(--red);color:#fff}
+.btn{background:var(--red);color:#fff;border:0;border-radius:10px;padding:13px;font-size:15px;font-weight:700;width:100%;margin-top:12px}
+.btn.alt{background:#fff;color:var(--red);border:1.5px solid var(--red)}
+.btn.sm{width:auto;padding:8px 12px;font-size:13px;margin:0}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1}
+.hint{font-size:12px;color:var(--muted);margin-top:4px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--soft);border-radius:12px;padding:12px}
+.stat span{font-size:12px;color:var(--muted);display:block}
+.stat b{font-size:18px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 4px;border-bottom:1px solid var(--line)}
+th{color:var(--red);font-size:12px}
+td.r,th.r{text-align:right}
+.rec{border-bottom:1px solid var(--line);padding:10px 0}
+.rec:last-child{border:0}
+.rec .top{display:flex;justify-content:space-between;gap:8px;font-weight:700}
+.rec .sub{font-size:13px;color:var(--muted);margin-top:3px}
+.tag{display:inline-block;background:var(--red);color:#fff;border-radius:6px;font-size:11px;padding:1px 6px;margin-left:6px}
+.tag.t{background:#fff;color:var(--red);border:1px solid var(--red)}
+.tag.p{background:#1a7f37}
+.day{background:var(--red);color:#fff;border-radius:10px;padding:8px 12px;margin:14px 0 4px;display:flex;justify-content:space-between;font-weight:700;font-size:14px}
+.del{background:none;border:0;color:var(--red);font-size:13px;text-decoration:underline;padding:6px 10px 4px 0}
+.wk{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.thumbs,.ph{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.thumbs div{position:relative}
+.thumbs img,.ph img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.thumbs b{position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;width:20px;height:20px;border-radius:50%;text-align:center;font-size:13px;line-height:20px}
+#viewer{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px}
+#viewer.on{display:flex}
+#viewer img{max-width:100%;max-height:75vh;border-radius:8px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:99;max-width:90%;text-align:center}
+#toast.show{opacity:1}
+.empty{color:var(--muted);text-align:center;padding:16px;font-size:14px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 40 40"><path d="M20 3C20 3 7 17 7 25a13 13 0 0 0 26 0C33 17 20 3 20 3z" fill="#d90429"/><text x="20" y="30" text-anchor="middle" font-size="16" font-weight="900" fill="#fff" font-family="Arial">F</text></svg>
+  </div>
+  <div><h1>FREEMAN ACTIVE<br>CAR WASH</h1><small id="sync"></small></div>
+</header>
+<nav>
+  <button data-t="wash" class="on">Wash</button>
+  <button data-t="today">Summary</button>
+  <button data-t="hist">History</button>
+  <button data-t="work">Workers</button>
+</nav>
+<main>
+
+<section id="wash" class="on">
+  <div class="card">
+    <h2>New car wash</h2>
+    <label>Car model</label>
+    <select id="model"></select>
+    <input type="text" id="modelOther" placeholder="Type the car name (e.g. Toyota Avalon)" style="display:none;margin-top:8px">
+    <label>Colour</label>
+    <select id="color"></select>
+    <input type="text" id="colorOther" placeholder="Type the colour" style="display:none;margin-top:8px">
+    <label>Customer name (optional)</label>
+    <input type="text" id="custName" placeholder="e.g. Mr. Emeka">
+    <label>Plate number (optional)</label>
+    <input type="text" id="plate" placeholder="e.g. ABC-123-DL" autocapitalize="characters">
+
+    <label>Type of wash</label>
+    <div class="chips" id="typeMode">
+      <button class="chip on" data-k="full">Full wash (inside &amp; outside)</button>
+      <button class="chip" data-k="out">Outside only</button>
+      <button class="chip" data-k="in">Inside only</button>
+    </div>
+
+    <label id="pickLabel">Who washed it? (1 to 3)</label>
+    <div class="chips" id="pick"></div>
+    <div class="hint" id="pickHint"></div>
+
+    <label>Amount paid</label>
+    <div class="chips" id="amtMode">
+      <button class="chip on" data-m="std">Normal price</button>
+      <button class="chip" data-m="ord">Others (different amount)</button>
+    </div>
+    <div id="ordBox" style="display:none">
+      <label>Amount paid (₦)</label>
+      <input type="number" id="ordAmt" inputmode="numeric" placeholder="e.g. 8000">
+      <label>Workers' amount (₦) (optional)</label>
+      <input type="number" id="ordPool" inputmode="numeric" placeholder="Leave empty to calculate automatically">
+      <label>What was done? (optional)</label>
+      <input type="text" id="ordNote" placeholder="e.g. Roof cleaning, discount">
+    </div>
+    <div class="hint" id="amtHint"></div>
+
+    <label>Has the customer paid?</label>
+    <div class="chips" id="payMode">
+      <button class="chip on" data-p="1">Paid ✓</button>
+      <button class="chip" data-p="0">Not paid yet</button>
+    </div>
+    <div class="hint">The time of payment is saved automatically.</div>
+
+    <label>Photo evidence</label>
+    <div class="row">
+      <button class="btn alt sm" id="snap" type="button">📷 Take photo</button>
+      <button class="btn alt sm" id="gal" type="button">🖼 Upload photo</button>
+    </div>
+    <div class="thumbs" id="newThumbs"></div>
+    <input type="file" id="fSnap" accept="image/*" capture="environment" style="display:none">
+    <input type="file" id="fGal" accept="image/*" multiple style="display:none">
+
+    <button class="btn" id="saveWash">Save wash</button>
+  </div>
+</section>
+
+<section id="today">
+  <div class="card">
+    <h2>Daily summary</h2>
+    <input type="date" id="sumDate">
+    <div class="stats" style="margin-top:12px">
+      <div class="stat"><span>Cars washed</span><b id="sCars">0</b></div>
+      <div class="stat"><span>Total money</span><b id="sMoney">₦0</b></div>
+      <div class="stat"><span>Workers' share</span><b id="sPool">₦0</b></div>
+      <div class="stat"><span>Owner's share</span><b id="sOwner">₦0</b></div>
+      <div class="stat"><span>Paid so far</span><b id="sPaid">₦0</b></div>
+      <div class="stat"><span>Not paid yet</span><b id="sUnpaid">₦0</b></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>What each worker earned</h2>
+    <div id="sWorkers"></div>
+  </div>
+  <div class="card">
+    <h2>Cars washed this day</h2>
+    <div id="sList"></div>
+  </div>
+</section>
+
+<section id="hist">
+  <div class="card">
+    <h2>All records</h2>
+    <div class="hint">Everything saved is here, any day, any time.</div>
+    <div id="hList"></div>
+    <button class="btn alt" id="more" style="display:none">Show older records</button>
+  </div>
+</section>
+
+<section id="work">
+  <div class="card">
+    <h2>Add a worker</h2>
+    <div class="row">
+      <input type="text" id="newWorker" placeholder="Worker name">
+      <button class="btn sm" id="addWorker" style="flex:none">Add</button>
+    </div>
+    <div id="wList" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <h2>Settings</h2>
+    <label>Full wash price (₦)</label>
+    <input type="number" id="setFull" inputmode="numeric">
+    <label>Outside only price (₦)</label>
+    <input type="number" id="setOut" inputmode="numeric">
+    <label>Inside only price (₦)</label>
+    <input type="number" id="setIn" inputmode="numeric">
+    <label>Workers' share (%) for full wash</label>
+    <input type="number" id="setRate" inputmode="decimal">
+    <label>Workers' amount for outside / inside only (₦)</label>
+    <input type="number" id="setSide" inputmode="numeric">
+    <div class="hint" id="rateHint"></div>
+    <button class="btn" id="saveSet">Save settings</button>
+  </div>
+  <div class="card">
+    <h2>Backup</h2>
+    <div class="hint">A backup file is an extra copy of everything, including photos.</div>
+    <button class="btn alt" id="exp">Download backup</button>
+    <button class="btn alt" id="imp">Restore from backup</button>
+    <input type="file" id="impFile" accept=".json,application/json" style="display:none">
+  </div>
+</section>
+
+</main>
+
+<div id="viewer"><img id="vImg" alt=""><div class="row" style="width:260px"><button class="btn alt" id="vClose">Close</button><button class="btn" id="vDel">Delete photo</button></div></div>
+<input type="file" id="recPhoto" accept="image/*" capture="environment" style="display:none">
+<div id="toast"></div>
+
+<script>
+/* ================================================================
+   STEP: paste your Firebase config below (see setup steps).
+   Leave as is to run on this phone only (data NOT shared).
+   ================================================================ */
+const FB={
+  apiKey:"AIzaSyAlcAZ1h_nFxRgPMNEjZNJcx5MTHYPdcOQ",
+  authDomain:"free-carwash-6c335.firebaseapp.com",
+  projectId:"free-carwash-6c335",
+  storageBucket:"free-carwash-6c335.firebasestorage.app",
+  messagingSenderId:"1043158821995",
+  appId:"1:1043158821995:web:bd2e4699f048e667d0952e"
+};
+/* ================================================================ */
+
+const CLOUD=!!FB.apiKey&&!FB.apiKey.startsWith('PASTE')&&typeof firebase!=='undefined';
+const VIEW=/[?&]view/.test(location.search);   // owner link: add ?view=1 to the web address
+const KEY='freeman_carwash_v1';
+const MODELS=['Toyota Camry','Toyota Corolla','Toyota Highlander','Toyota Venza','Toyota RAV4','Toyota Sienna','Honda Accord','Honda CR-V','Lexus RX 350','Mercedes-Benz GLK','Mercedes-Benz GLA','Mercedes-Benz GLC','Mercedes-Benz GLE','Mercedes-Benz ML','Mercedes-Benz C-Class','Mercedes-Benz E-Class','Other'];
+const COLORS=['Red','Black','Blue','Orange','Purple','White','Silver','Grey','Green','Gold','Other'];
+const TYPES={full:'Full wash',out:'Outside only',in:'Inside only'};
+
+let db={workers:[],records:[],prices:{full:5000,out:5000,in:5000},rate:30,sidePool:1000};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const naira=n=>'₦'+(Math.round(n*100)/100).toLocaleString('en-NG');
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2400)}
+function dkey(ts){const d=new Date(ts);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+const fDate=ts=>new Date(ts).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+const fTime=ts=>new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:true});
+function setSync(t){$('sync').textContent=(VIEW?'VIEW ONLY · ':'')+t}
+const fail=m=>e=>{console.error(e);toast(m)};
+
+/* ---------------- storage backends ---------------- */
+const B={};
+let PC={};  // photo cache by record id
+
+if(CLOUD){
+  firebase.initializeApp(FB);
+  const fs=firebase.firestore();
+  try{fs.settings({experimentalForceLongPolling:true})}catch(e){console.error(e)}   // more reliable on phone networks; never stops the app
+  fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+  setSync('● Connecting…');
+  const live=s=>setSync(s.metadata.fromCache?'● Offline — will sync when online':'● Live · shared');
+  const err=e=>{console.error(e);setSync('● Database error');toast('Database error. Check Firestore rules.')};
+  B.init=()=>{
+    fs.collection('config').doc('main').onSnapshot(s=>{
+      const d=s.data()||{};
+      if(d.workers)db.workers=d.workers;
+      if(d.prices)db.prices=d.prices;
+      if(d.rate!=null)db.rate=d.rate;
+      if(d.sidePool!=null)db.sidePool=d.sidePool;
+      live(s);render();
+    },err);
+    fs.collection('records').onSnapshot(s=>{db.records=s.docs.map(d=>d.data());live(s);render()},err);
+  };
+  B.saveCfg=()=>fs.collection('config').doc('main').set({workers:db.workers,prices:db.prices,rate:db.rate,sidePool:db.sidePool}).catch(fail('Could not save'));
+  B.addRecord=r=>fs.collection('records').doc(r.id).set(r).catch(fail('Could not save wash'));
+  B.delRecord=id=>fs.collection('records').doc(id).delete().catch(fail('Could not delete'));
+  B.updRecord=(id,f)=>fs.collection('records').doc(id).update(f).catch(fail('Could not update'));
+  B.putPhoto=p=>fs.collection('photos').doc(p.id).set(p).catch(fail('Could not save photo'));
+  B.delPhoto=id=>fs.collection('photos').doc(id).delete().catch(fail('Could not delete photo'));
+  B.photosOf=async rid=>(await fs.collection('photos').where('rid','==',rid).get()).docs.map(d=>d.data());
+  B.allPhotos=async()=>(await fs.collection('photos').get()).docs.map(d=>d.data());
+  B.clearPhotos=async()=>{};
+}else{
+  setSync('● This phone only (not shared yet)');
+  try{const s=localStorage.getItem(KEY);if(s){const d=JSON.parse(s);db=Object.assign(db,d);if(d.price&&!d.prices)db.prices={full:d.price,out:d.price,in:d.price};if(d.rate===15)db.rate=30}}catch(e){}
+  if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(()=>{})}
+  const saveLocal=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){toast('Could not save! Download a backup.')}};
+  let _i;
+  const idb=()=>_i||(_i=new Promise((res,rej)=>{const q=indexedDB.open('fcw',1);q.onupgradeneeded=()=>{q.result.createObjectStore('photos',{keyPath:'id'}).createIndex('rid','rid')};q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)}));
+  const tx=(mode,fn)=>idb().then(d=>new Promise((res,rej)=>{const t=d.transaction('photos',mode);const r=fn(t.objectStore('photos'));t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)}));
+  B.init=()=>render();
+  B.saveCfg=async()=>saveLocal();
+  B.addRecord=async r=>{db.records.push(r);saveLocal()};
+  B.delRecord=async id=>{db.records=db.records.filter(r=>r.id!==id);saveLocal()};
+  B.updRecord=async(id,f)=>{const r=db.records.find(x=>x.id===id);if(r)Object.assign(r,f);saveLocal()};
+  B.putPhoto=p=>tx('readwrite',s=>s.put(p));
+  B.delPhoto=id=>tx('readwrite',s=>s.delete(id));
+  B.photosOf=rid=>tx('readonly',s=>s.index('rid').getAll(rid));
+  B.allPhotos=()=>tx('readonly',s=>s.getAll());
+  B.clearPhotos=()=>tx('readwrite',s=>s.clear());
+}
+
+function compress(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),i=new Image();i.onload=()=>{const k=Math.min(1,900/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL('image/jpeg',.6))};i.onerror=rej;i.src=u})}
+async function photos(rid){if(!PC[rid])PC[rid]=await B.photosOf(rid);return PC[rid]}
+
+let picked=[],mode='std',wtype='full',pending=[],histLimit=30,paidNow=true;
+document.querySelectorAll('#payMode .chip').forEach(c=>c.onclick=()=>{
+  paidNow=c.dataset.p==='1';
+  document.querySelectorAll('#payMode .chip').forEach(x=>x.classList.toggle('on',x===c));
+});
+
+/* ---------------- tabs ---------------- */
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id===b.dataset.t));
+  PC={};histLimit=30;render();window.scrollTo(0,0);
+});
+$('model').innerHTML=MODELS.map(m=>`<option>${m}</option>`).join('');
+$('color').innerHTML=COLORS.map(m=>`<option>${m}</option>`).join('');
+$('model').onchange=()=>{$('modelOther').style.display=$('model').value==='Other'?'block':'none'};
+$('color').onchange=()=>{$('colorOther').style.display=$('color').value==='Other'?'block':'none'};
+
+/* ---------------- wash form ---------------- */
+function renderPick(){
+  if(!db.workers.length){$('pick').innerHTML='<div class="empty" style="padding:4px">No workers yet. Add them in the Workers tab.</div>'}
+  else{
+    $('pick').innerHTML=db.workers.map(w=>`<button class="chip ${picked.includes(w)?'on':''}" data-w="${esc(w)}">${esc(w)}</button>`).join('');
+    $('pick').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+      const w=c.dataset.w;
+      if(picked.includes(w))picked=picked.filter(x=>x!==w);
+      else{if(picked.length>=maxW())return toast(wtype==='full'?'Maximum of 3 workers per car':'Outside or inside only: maximum of 2 workers');picked.push(w)}
+      renderPick();
+    });
+  }
+  amtHint();
+}
+/* full wash: 1 to 3 workers. outside only / inside only: 1 to 2 workers */
+const maxW=()=>wtype==='full'?3:2;
+/* total money for the workers on one wash */
+function poolFor(type,amount,isOrd,manual){
+  if(isOrd&&manual>0)return manual;
+  if(!isOrd&&type!=='full')return db.sidePool;
+  return amount*db.rate/100;
+}
+function amtHint(){
+  const p=db.prices[wtype];
+  $('pickLabel').textContent=`Who washed it? (1 to ${maxW()})`;
+  $('amtHint').textContent=mode==='std'?`Amount: ${naira(p)}`:`Type the amount the customer paid (normal price is ${naira(p)}).`;
+  const n=picked.length,amt=mode==='std'?p:(parseFloat($('ordAmt').value)||0);
+  const pool=amt?poolFor(wtype,amt,mode==='ord',parseFloat($('ordPool').value)||0):0;
+  $('pickHint').textContent=n?`${n} of ${maxW()} selected`+(pool?` · ${naira(pool/n)} each (workers' total ${naira(pool)})`:''):'';
+}
+$('ordAmt').oninput=amtHint;
+$('ordPool').oninput=amtHint;
+document.querySelectorAll('#typeMode .chip').forEach(c=>c.onclick=()=>{
+  wtype=c.dataset.k;
+  document.querySelectorAll('#typeMode .chip').forEach(x=>x.classList.toggle('on',x===c));
+  if(picked.length>maxW()){picked=picked.slice(0,maxW());toast('Only 2 workers allowed for outside or inside only')}
+  renderPick();
+});
+document.querySelectorAll('#amtMode .chip').forEach(c=>c.onclick=()=>{
+  mode=c.dataset.m;
+  document.querySelectorAll('#amtMode .chip').forEach(x=>x.classList.toggle('on',x===c));
+  $('ordBox').style.display=mode==='ord'?'block':'none';
+  amtHint();
+});
+function renderThumbs(){
+  $('newThumbs').innerHTML=pending.map((d,i)=>`<div><img src="${d}"><b data-i="${i}">×</b></div>`).join('');
+  $('newThumbs').querySelectorAll('b').forEach(b=>b.onclick=()=>{pending.splice(+b.dataset.i,1);renderThumbs()});
+}
+async function addPending(files){
+  for(const f of files){try{pending.push(await compress(f))}catch(e){toast('Could not read photo')}}
+  renderThumbs();
+}
+$('snap').onclick=()=>$('fSnap').click();
+$('gal').onclick=()=>$('fGal').click();
+$('fSnap').onchange=e=>{addPending([...e.target.files]);e.target.value=''};
+$('fGal').onchange=e=>{addPending([...e.target.files]);e.target.value=''};
+
+$('saveWash').onclick=()=>{
+  if(!picked.length)return toast('Pick at least 1 worker');
+  const price=db.prices[wtype];
+  let amount=price,note='';
+  if(mode==='ord'){
+    amount=parseFloat($('ordAmt').value);
+    if(!amount||amount<=0)return toast('Enter the amount paid');
+    note=$('ordNote').value.trim();
+  }
+  let model=$('model').value,color=$('color').value;
+  if(model==='Other'){model=$('modelOther').value.trim();if(!model)return toast('Type the car name')}
+  if(color==='Other'){color=$('colorOther').value.trim();if(!color)return toast('Type the colour')}
+  if(picked.length>maxW())return toast('Only '+maxW()+' workers allowed for this wash');
+  const pool=poolFor(wtype,amount,mode==='ord',parseFloat($('ordPool').value)||0);
+  if(pool>amount)return toast("Workers' amount cannot be more than the amount paid");
+  const id=uid();
+  const now=Date.now();
+  B.addRecord({id,ts:now,paid:paidNow,paidAt:paidNow?now:null,customer:$('custName').value.trim(),model,color,plate:$('plate').value.trim().toUpperCase(),type:wtype,workers:picked.slice(),amount,pool,order:mode==='ord',note});
+  pending.forEach(d=>B.putPhoto({id:uid(),rid:id,data:d}));
+  picked=[];pending=[];$('plate').value='';$('modelOther').value='';$('colorOther').value='';$('custName').value='';$('ordAmt').value='';$('ordPool').value='';$('ordNote').value='';
+  renderThumbs();renderPick();toast('Saved ✓');
+};
+
+/* ---------------- records ---------------- */
+const poolOf=r=>r.pool!=null?r.pool:r.amount*db.rate/100;   // old records without a saved pool use the % rate
+const share=r=>poolOf(r)/r.workers.length;
+const recHTML=(r,del)=>`<div class="rec"><div class="top"><span>${esc(r.model)} · ${esc(r.color)}${r.order?'<span class="tag">OTHER AMOUNT</span>':''}</span><span>${naira(r.amount)}</span></div>
+<div class="sub">${r.paid===false?'<span class="tag" style="margin:0">NOT PAID</span>':`<span class="tag p" style="margin:0">PAID ✓ ${fTime(r.paidAt||r.ts)}</span>`}</div>
+<div class="sub"><span class="tag t" style="margin:0 6px 0 0">${TYPES[r.type||'full']}</span>${fTime(r.ts)}${r.customer?' · 👤 '+esc(r.customer):''}${r.plate?' · '+esc(r.plate):''} · ${r.workers.map(esc).join(', ')}${r.note?' · '+esc(r.note):''}</div>
+<div class="ph" data-r="${r.id}"></div>
+${VIEW?'':`${r.paid===false?`<button class="del" data-pay="${r.id}">✔ Mark as paid</button>`:''}<button class="del" data-addph="${r.id}">📷 Add photo</button>${del?`<button class="del" data-d="${r.id}">Delete</button>`:''}`}</div>`;
+
+function fillPhotos(root){
+  root.querySelectorAll('.ph').forEach(async el=>{
+    try{const ps=await photos(el.dataset.r);el.innerHTML=ps.map(p=>`<img src="${p.data}" data-p="${p.id}">`).join('')}catch(e){}
+  });
+}
+
+function renderSummary(){
+  const d=$('sumDate').value||dkey(Date.now());
+  const rs=db.records.filter(r=>dkey(r.ts)===d).sort((a,b)=>a.ts-b.ts);
+  const total=rs.reduce((s,r)=>s+r.amount,0),pool=rs.reduce((s,r)=>s+poolOf(r),0);
+  const unpaid=rs.filter(r=>r.paid===false).reduce((s,r)=>s+r.amount,0);
+  $('sPaid').textContent=naira(total-unpaid);$('sUnpaid').textContent=naira(unpaid);
+  $('sCars').textContent=rs.length;$('sMoney').textContent=naira(total);$('sPool').textContent=naira(pool);$('sOwner').textContent=naira(total-pool);
+  const e={};
+  rs.forEach(r=>r.workers.forEach(w=>{e[w]=e[w]||{n:0,m:0};e[w].n++;e[w].m+=share(r)}));
+  const names=Object.keys(e).sort((a,b)=>e[b].m-e[a].m);
+  $('sWorkers').innerHTML=names.length?`<table><tr><th>Worker</th><th class="r">Cars</th><th class="r">Earned</th></tr>${names.map(n=>`<tr><td>${esc(n)}</td><td class="r">${e[n].n}</td><td class="r"><b>${naira(e[n].m)}</b></td></tr>`).join('')}</table>`:'<div class="empty">No washes on this day.</div>';
+  $('sList').innerHTML=rs.length?rs.map(r=>recHTML(r,false)).join(''):'<div class="empty">No cars washed.</div>';
+  fillPhotos($('sList'));
+}
+$('sumDate').onchange=renderSummary;
+
+function renderHist(){
+  const rs=db.records.slice().sort((a,b)=>b.ts-a.ts);
+  if(!rs.length){$('hList').innerHTML='<div class="empty">Nothing saved yet.</div>';$('more').style.display='none';return}
+  const totals={};rs.forEach(r=>totals[dkey(r.ts)]=(totals[dkey(r.ts)]||0)+r.amount);
+  let out='',cur='';
+  rs.slice(0,histLimit).forEach(r=>{
+    const k=dkey(r.ts);
+    if(k!==cur){cur=k;out+=`<div class="day"><span>${fDate(r.ts)}</span><span>${naira(totals[k])}</span></div>`}
+    out+=recHTML(r,true);
+  });
+  $('hList').innerHTML=out;
+  $('more').style.display=rs.length>histLimit?'block':'none';
+  fillPhotos($('hList'));
+}
+$('more').onclick=()=>{histLimit+=30;renderHist()};
+
+let addRid=null,viewId=null,viewRid=null;
+document.addEventListener('click',async e=>{
+  const t=e.target;
+  if(t.dataset.addph){addRid=t.dataset.addph;$('recPhoto').click()}
+  else if(t.dataset.pay){await B.updRecord(t.dataset.pay,{paid:true,paidAt:Date.now()});toast('Marked as paid ✓');render()}
+  else if(t.dataset.d){
+    if(!confirm('Delete this record and its photos?'))return;
+    const id=t.dataset.d;
+    try{for(const p of await B.photosOf(id))B.delPhoto(p.id)}catch(x){}
+    delete PC[id];B.delRecord(id).then(render);
+  }
+  else if(t.tagName==='IMG'&&t.dataset.p){viewId=t.dataset.p;viewRid=t.parentElement.dataset.r;$('vImg').src=t.src;$('vDel').style.display=VIEW?'none':'';$('viewer').classList.add('on')}
+});
+$('recPhoto').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';
+  if(!f||!addRid)return;
+  try{await B.putPhoto({id:uid(),rid:addRid,data:await compress(f)});delete PC[addRid];toast('Photo saved ✓');render()}catch(x){toast('Could not save photo')}
+};
+$('vClose').onclick=()=>$('viewer').classList.remove('on');
+$('vDel').onclick=async()=>{
+  if(!viewId||!confirm('Delete this photo?'))return;
+  await B.delPhoto(viewId);delete PC[viewRid];$('viewer').classList.remove('on');render();
+};
+
+/* ---------------- workers & settings ---------------- */
+function renderWork(){
+  $('wList').innerHTML=db.workers.length?db.workers.map(w=>`<div class="wk"><span>${esc(w)}</span><button class="del" data-w="${esc(w)}">Remove</button></div>`).join(''):'<div class="empty">No workers yet.</div>';
+  $('wList').querySelectorAll('.del').forEach(b=>b.onclick=()=>{
+    if(confirm('Remove '+b.dataset.w+'? Old records stay.')){db.workers=db.workers.filter(x=>x!==b.dataset.w);picked=picked.filter(x=>x!==b.dataset.w);B.saveCfg();render()}
+  });
+  const ae=document.activeElement;
+  if(!(ae&&ae.tagName==='INPUT'&&$('work').contains(ae))){$('setFull').value=db.prices.full;$('setOut').value=db.prices.out;$('setIn').value=db.prices.in;$('setRate').value=db.rate;$('setSide').value=db.sidePool}
+  $('rateHint').textContent=`Full wash: ${db.rate}% of ${naira(db.prices.full)} = ${naira(db.prices.full*db.rate/100)} for the workers. Outside or inside only: ${naira(db.sidePool)} (1 worker gets ${naira(db.sidePool)}, 2 workers get ${naira(db.sidePool/2)} each).`;
+}
+$('addWorker').onclick=()=>{
+  const n=$('newWorker').value.trim();
+  if(!n)return toast('Type a name');
+  if(db.workers.some(w=>w.toLowerCase()===n.toLowerCase()))return toast('Already added');
+  db.workers.push(n);B.saveCfg();$('newWorker').value='';render();toast('Worker added ✓');
+};
+$('saveSet').onclick=()=>{
+  const f=parseFloat($('setFull').value),o=parseFloat($('setOut').value),i=parseFloat($('setIn').value),r=parseFloat($('setRate').value),sp=parseFloat($('setSide').value);
+  if(!(f>0&&o>0&&i>0)||isNaN(r)||r<0||r>100||!(sp>=0))return toast('Check the values');
+  db.prices={full:f,out:o,in:i};db.rate=r;db.sidePool=sp;B.saveCfg();render();toast('Settings saved ✓');
+};
+
+/* ---------------- backup ---------------- */
+$('exp').onclick=async()=>{
+  let ph=[];try{ph=await B.allPhotos()}catch(e){}
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify({workers:db.workers,records:db.records,prices:db.prices,rate:db.rate,sidePool:db.sidePool,photos:ph})],{type:'application/json'}));
+  a.download='freeman-carwash-backup-'+dkey(Date.now())+'.json';a.click();
+};
+$('imp').onclick=()=>$('impFile').click();
+$('impFile').onchange=e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  const rd=new FileReader();
+  rd.onload=async()=>{
+    try{
+      const d=JSON.parse(rd.result);
+      if(!Array.isArray(d.records)||!Array.isArray(d.workers))throw 0;
+      if(!confirm(CLOUD?'Add everything from this backup to the shared data?':'Replace current data with this backup?'))return;
+      if(!CLOUD){db.records=[];await B.clearPhotos()}
+      db.workers=d.workers;if(d.prices)db.prices=d.prices;if(d.rate!=null)db.rate=d.rate;if(d.sidePool!=null)db.sidePool=d.sidePool;
+      B.saveCfg();
+      for(const r of d.records)await B.addRecord(r);
+      for(const p of (d.photos||[]))await B.putPhoto(p);
+      PC={};render();toast('Restored ✓');
+    }catch(x){toast('Not a valid backup file')}
+  };
+  rd.readAsText(f);
+};
+
+/* ---------------- render ---------------- */
+function render(){
+  const t=document.querySelector('section.on').id;
+  if(t==='wash'){renderPick()}
+  if(t==='today')renderSummary();
+  if(t==='hist')renderHist();
+  if(t==='work')renderWork();
+}
+$('sumDate').value=dkey(Date.now());
+
+if(VIEW){
+  document.querySelector('nav [data-t=wash]').remove();
+  document.querySelector('nav [data-t=work]').remove();
+  document.querySelector('nav [data-t=today]').click();
+}
+B.init();
+render();
+</script>
+</body>
+</html>
